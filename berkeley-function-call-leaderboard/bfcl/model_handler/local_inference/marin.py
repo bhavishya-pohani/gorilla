@@ -22,33 +22,30 @@ class MarinHandler(OSSHandler):
         pydantic_format = """{"properties": {"arguments": {"title": "Arguments", "type": "object"}, "name": {"title": "Name", "type": "string"}}, "required": ["arguments", "name"], "title": "FunctionCall", "type": "object"}"""
         tool_call_format = """{"arguments": <args-dict>, "name": <function-name>}"""
         formatted_prompt = inspect.cleandoc(
-            """<|im_start|>system
+            """<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n
             You are a function calling AI model. You are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions. Here are the available tools:
             <tools>
             {function}
             </tools>
-            Use the following pydantic model json schema for each tool call you will make:
-            {pydantic_format}
             For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows:
             <tool_call>
             {tool_call_format}
             </tool_call>
-            <|im_end|>
+            <|eot_id|>
             """
         )
 
         formatted_prompt = formatted_prompt.format(
             function=function,
-            pydantic_format=pydantic_format,
             tool_call_format=tool_call_format,
         )
 
         for message in messages:
             formatted_prompt += (
-                f"<|im_start|>{message['role']}\n{message['content']}<|im_end|>\n"
+                f"<|start_header_id|>{message['role']}<|end_header_id|>\n{message['content']}<|eot_id|>"
             )
 
-        formatted_prompt += "<|im_start|>assistant\n"
+        formatted_prompt += "<|start_header_id|>assistant<|end_header_id|>\n"
 
         return formatted_prompt
 
