@@ -1,25 +1,19 @@
 import inspect
 import json
 
-from bfcl.constants.type_mappings import GORILLA_TO_OPENAPI
-from bfcl.model_handler.model_style import ModelStyle
 from bfcl.model_handler.local_inference.base_oss_handler import OSSHandler
 from bfcl.model_handler.utils import (
-    convert_to_tool,
     func_doc_language_specific_pre_processing,
 )
 from overrides import override
 
 class MarinHandler(OSSHandler):
-    # copied from HermesHandler
+    # copied from HermesHandler, is a prompting model
     def __init__(self, model_name, temperature) -> None:
         super().__init__(model_name, temperature)
 
     @override
     def _format_prompt(self, messages, function):
-        # Hermes use Langchain to OpenAI conversion. It does not use tool call but function call.
-        function = convert_to_tool(function, GORILLA_TO_OPENAPI, ModelStyle.OSSMODEL)
-        pydantic_format = """{"properties": {"arguments": {"title": "Arguments", "type": "object"}, "name": {"title": "Name", "type": "string"}}, "required": ["arguments", "name"], "title": "FunctionCall", "type": "object"}"""
         tool_call_format = """{"arguments": <args-dict>, "name": <function-name>}"""
         formatted_prompt = inspect.cleandoc(
             """<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n
@@ -97,10 +91,10 @@ class MarinHandler(OSSHandler):
     def _pre_query_processing_prompting(self, test_entry: dict) -> dict:
         functions: list = test_entry["function"]
         test_category: str = test_entry["id"].rsplit("_", 1)[0]
-
+        
         functions = func_doc_language_specific_pre_processing(functions, test_category)
 
-        # Hermes use its own system prompt
+        # Marin uses its own system prompt
 
         return {"message": [], "function": functions}
 
@@ -111,14 +105,14 @@ class MarinHandler(OSSHandler):
         for execution_result, decoded_model_response in zip(
             execution_results, model_response_data["model_responses_decoded"]
         ):
-            hermes_response_object = {
+            marin_response_object = {
                 "name": decoded_model_response,
                 "content": execution_result,
             }
             inference_data["message"].append(
                 {
                     "role": "tool",
-                    "content": f"<tool_response>\n{hermes_response_object}\n</tool_response>\n",
+                    "content": f"<tool_response>\n{marin_response_object}\n</tool_response>\n",
                 }
             )
 
